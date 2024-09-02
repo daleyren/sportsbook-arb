@@ -31,7 +31,6 @@ def clean_up_team_name(team_name):
     else:
         return team_name
 
-    
 
 def scrape_draft_kings_mlb():
     url = "https://sportsbook.draftkings.com/leagues/baseball/mlb"
@@ -55,16 +54,6 @@ def scrape_draft_kings_mlb():
         df_mlb.loc[len(df_mlb)] = [team, run_line, total, moneyline]
     
     print(df_mlb)
-
-
-
-
-  
-
-
-
-  
-
 
 
 def main():
