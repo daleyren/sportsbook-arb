@@ -9,6 +9,7 @@ import time
 import pandas as pd
 import numpy as np
 
+
 def clean_up_team_name(team_name):
     '''
     team_name comes into two formats: CHI Cubs & Chicago Cubs.
@@ -61,7 +62,12 @@ def scrape_mlb_draft_kings():
     
     return df_mlb
 
-def scrape_mlb_caesars(): # CURRENTLY BLOCKS CONTENT ON DEFAULT SELENIUM (MAY NEED LOGIN/COOKIES/ETC)
+
+def scrape_mlb_caesars():
+    '''
+    CURRENTLY BLOCKS CONTENT ON DEFAULT SELENIUM (MAY NEED LOGIN/COOKIES/ETC)
+    When scraping, requires the window focus to be on the WebDriver tab (can probably game later)
+    '''
     # options = webdriver.ChromeOptions()
     # options.page_load_strategy = 'normal' # Used by default, waits for all resources to download
     # options.page_load_strategy = 'eager' # DOM access is ready, but other resources like images may still be loading
@@ -76,28 +82,38 @@ def scrape_mlb_caesars(): # CURRENTLY BLOCKS CONTENT ON DEFAULT SELENIUM (MAY NE
     driver.get(url)
     time.sleep(3)
 
-
     # Scroll Down (NECESSARY - website progressively loads the DOM)
-    for i in range(10):  # Adjust the range for more or fewer scrolls
-        driver.execute_script("window.scrollBy(0, 300);")  # Scroll down by 500 pixels
-        time.sleep(0.5)  # Wait a bit before scrolling again
+    for i in range(20):  # Adjust the range for more or fewer scrolls
+        driver.execute_script("window.scrollBy(0, 150);")  # Scroll down by 500 pixels
+        time.sleep(0.1)  # Wait a bit before scrolling again
     
     html = driver.page_source
     soup = BeautifulSoup(html, "html.parser")
-    
+
+    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline'])
+
     # blocks = soup.find_all(class_='eventContainer')
     blocks = soup.select('.eventContainer:not(.eventHasTournament)')
-    print(len(blocks))
-    temp = blocks[0].find_all('button')
-
 
     for i, block in enumerate(blocks):
         teams = block.find_all(class_='truncate2Rows')
-        team_one = teams[0].text
-        team_two = teams[1].text
-        print(team_one, 'vs', team_two)
+        team_one = clean_up_team_name(teams[0].text)
+        team_two = clean_up_team_name(teams[1].text)
 
+        buttons = block.find_all('button')
+        spread_one = buttons[0].text
+        spread_two = buttons[1].text
+        moneyline_one = buttons[2].text
+        moneyline_two = buttons[3].text
+        total_one = buttons[4].text
+        total_two = buttons[5].text
+        
+        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one]
+        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two]
+
+        # print(team_one, 'vs', team_two)
     driver.quit()
+    return df_mlb
 
 def scrape_mlb_bet_mgm():
     # Will probably have to switch to selenium
@@ -120,7 +136,7 @@ def scrape_mlb_bet_mgm():
 
 
 def main():
-    # print(scrape_mlb_draft_kings())
+    print(scrape_mlb_draft_kings())
     print(scrape_mlb_caesars())
     # print(scrape_mlb_bet_mgm())
 
