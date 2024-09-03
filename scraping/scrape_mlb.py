@@ -80,10 +80,10 @@ def scrape_mlb_caesars():
     driver = uc.Chrome()
     url = 'https://sportsbook.caesars.com/us/md/bet/baseball?id=04f90892-3afa-4e84-acce-5b89f151063d'
     driver.get(url)
-    time.sleep(3)
+    time.sleep(5)
 
     # Scroll Down (NECESSARY - website progressively loads the DOM)
-    for i in range(20):  # Adjust the range for more or fewer scrolls
+    for i in range(25):  # Adjust the range for more or fewer scrolls
         driver.execute_script("window.scrollBy(0, 150);")  # Scroll down by 500 pixels
         time.sleep(0.1)  # Wait a bit before scrolling again
     
@@ -95,50 +95,72 @@ def scrape_mlb_caesars():
     # blocks = soup.find_all(class_='eventContainer')
     blocks = soup.select('.eventContainer:not(.eventHasTournament)')
 
-    for i, block in enumerate(blocks):
+    for block in blocks:
         teams = block.find_all(class_='truncate2Rows')
         team_one = clean_up_team_name(teams[0].text)
         team_two = clean_up_team_name(teams[1].text)
 
-        buttons = block.find_all('button')
-        spread_one = buttons[0].text
-        spread_two = buttons[1].text
-        moneyline_one = buttons[2].text
-        moneyline_two = buttons[3].text
-        total_one = buttons[4].text
-        total_two = buttons[5].text
+        chunks = block.find_all('button')
+        spread_one = chunks[0].text
+        spread_two = chunks[1].text
+        moneyline_one = chunks[2].text
+        moneyline_two = chunks[3].text
+        total_one = chunks[4].text
+        total_two = chunks[5].text
         
         df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one]
         df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two]
 
-        # print(team_one, 'vs', team_two)
     driver.quit()
     return df_mlb
 
 def scrape_mlb_bet_mgm():
-    # Will probably have to switch to selenium
-
     # URL might be subject to change depending on location and other factors
     url = 'https://sports.md.betmgm.com/en/sports/baseball-23/betting/usa-9/mlb-75'
-    req = requests.get(url)
-    soup = BeautifulSoup(req.content, "html.parser")
-    print(soup.title)
 
+    options = webdriver.ChromeOptions()
+    options.page_load_strategy = 'normal' # Used by default, waits for all resources to download
+    # options.page_load_strategy = 'eager' # DOM access is ready, but other resources like images may still be loading
+    # options.page_load_strategy = 'none' # Does not block WebDriver at all    
+    ua = UserAgent()
+    options = webdriver.ChromeOptions()
+    options.add_argument(f'user-agent={ua.random}')
+    driver = webdriver.Chrome(options=options)
 
-    df_mlb = pd.DataFrame(columns=['Team', 'Run Line', 'Total', 'Moneyline'])
-    blocks = soup.find_all(class_='grid-event-wrapper has-all-markets image ng-star-inserted')
-    # STUFF HERE
+    driver.get(url)
+    time.sleep(5)
+
+    html = driver.page_source
+    soup = BeautifulSoup(html, "html.parser")
+    
+    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline'])
+    
+    blocks = soup.find_all('ms-six-pack-event')
+    
     for block in blocks:
-        team = block.find_all(class_='participant')
-        print(team)
+        teams = block.find_all(class_='participant')
+        team_one = teams[0].text.strip()
+        team_two = teams[1].text.strip()
 
+        chunks = block.find_all('ms-option')
+        spread_one = chunks[0].text
+        spread_two = chunks[1].text
+        moneyline_one = chunks[2].text
+        moneyline_two = chunks[3].text
+        total_one = chunks[4].text
+        total_two = chunks[5].text
+
+        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one]
+        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two]    
+
+    driver.quit()
     return df_mlb
 
 
 def main():
     print(scrape_mlb_draft_kings())
     print(scrape_mlb_caesars())
-    # print(scrape_mlb_bet_mgm())
+    print(scrape_mlb_bet_mgm())
 
 if __name__ == '__main__':
     main()
