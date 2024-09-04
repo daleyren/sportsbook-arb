@@ -1,0 +1,7 @@
+Later Project Considerations:
+  - Latencies with Sportsbooks
+    * When processing live events, latency does matter in capitalizing in momentary arbitrage opportunities
+    * Multiple WebDriver Docker instances running in parallel?
+  - Sportsbook Efficiency
+    * Seeing how often the Sportsbooks are correct in their odds/favorites
+  

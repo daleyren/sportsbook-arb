@@ -100,7 +100,7 @@ def scrape_mlb_caesars():
         team_one = clean_up_team_name(teams[0].text)
         team_two = clean_up_team_name(teams[1].text)
 
-        chunks = block.find_all('button')
+        chunks = block.find_all(class_='selectionContainer')
         spread_one = chunks[0].text
         spread_two = chunks[1].text
         moneyline_one = chunks[2].text
@@ -136,7 +136,7 @@ def scrape_mlb_bet_mgm():
     df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline'])
     
     blocks = soup.find_all('ms-six-pack-event')
-    
+
     for block in blocks:
         teams = block.find_all(class_='participant')
         team_one = teams[0].text.strip()
@@ -145,10 +145,10 @@ def scrape_mlb_bet_mgm():
         chunks = block.find_all('ms-option')
         spread_one = chunks[0].text
         spread_two = chunks[1].text
-        moneyline_one = chunks[2].text
-        moneyline_two = chunks[3].text
-        total_one = chunks[4].text
-        total_two = chunks[5].text
+        total_one = chunks[2].text
+        total_two = chunks[3].text
+        moneyline_one = chunks[4].text
+        moneyline_two = chunks[5].text
 
         df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one]
         df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two]    
@@ -158,9 +158,9 @@ def scrape_mlb_bet_mgm():
 
 
 def main():
-    print(scrape_mlb_draft_kings())
-    print(scrape_mlb_caesars())
-    print(scrape_mlb_bet_mgm())
+    scrape_mlb_draft_kings().to_csv('data/draft_kings_mlb_snapshot.csv')
+    scrape_mlb_caesars().to_csv('data/caesars_mlb_snapshot.csv')
+    scrape_mlb_bet_mgm().to_csv('data/bet_mgm_mlb_snapshot.csv')
 
 if __name__ == '__main__':
     main()
