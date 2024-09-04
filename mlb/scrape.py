@@ -8,6 +8,7 @@ import requests
 import time
 import pandas as pd
 import numpy as np
+import uuid
 
 
 def clean_up_team_name(team_name):
@@ -18,11 +19,11 @@ def clean_up_team_name(team_name):
     # List of possible MLB city abbreviations or full names
     mlb_cities = {
         "CHI", "Chicago", "SD", "San Diego", "LA", "Los Angeles", "BOS", "Boston", "NY", "New York",
-        "SF", "San Francisco", "HOU", "Houston", "PHI", "Philadelphia", "TOR", "Toronto", "ATL", "Atlanta",
-        "CLE", "Cleveland", "CIN", "Cincinnati", "DET", "Detroit", "MIL", "Milwaukee", "MIN", "Minnesota",
-        "OAK", "Oakland", "SEA", "Seattle", "TB", "Tampa Bay", "BAL", "Baltimore", "PIT", "Pittsburgh", 
-        "KC", "Kansas City", "TEX", "Texas", "COL", "Colorado", "MIA", "Miami", "WAS", "Washington", 
-        "STL", "St. Louis", "ARI", "Arizona", "SJ", "San Jose"
+        "SF", "San Francisco", "HOU", "Houston", "PHI", "Philadelphia", "TOR", "Toronto", "ATL",
+        "Atlanta", "CLE", "Cleveland", "CIN", "Cincinnati", "DET", "Detroit", "MIL", "Milwaukee",
+        "MIN", "Minnesota", "OAK", "Oakland", "SEA", "Seattle", "TB", "Tampa Bay", "BAL",
+        "Baltimore", "PIT", "Pittsburgh", "KC", "Kansas City", "TEX", "Texas", "COL", "Colorado",
+        "MIA", "Miami", "WAS", "Washington", "STL", "St. Louis", "ARI", "Arizona", "SJ", "San Jose"
     }
 
     # Split the team name into words
@@ -37,45 +38,64 @@ def clean_up_team_name(team_name):
         return ' '.join(words[1:])
     else:
         return team_name
+    
+def add_event(curr_event, event_ids, events_df):
+    '''
+    Takes in a tuple of two teams (in any order). If the event was not already processed, then
+    creates a new identifier (uuid) for the event; otherwise, returns the existing identifier.
+    '''
+    if len(curr_event) != 2:
+        raise Exception('Did not receive two teams for the event. Check scraping and parsing!')
+    
+    if curr_event in event_ids:
+        return event_ids[curr_event]
+    
+    team_one, team_two = curr_event[0], curr_event[1]
+    new_event_id = uuid.uuid4()
+
+    event_ids[(team_one, team_two)] = new_event_id
+    event_ids[(team_two, team_one)] = new_event_id
+    events_df.loc[len(events_df)] = [new_event_id, team_one, team_two]
+
+    return new_event_id
 
 
-def scrape_mlb_draft_kings():
+def scrape_mlb_draft_kings(event_ids, events_df):
     url = 'https://sportsbook.draftkings.com/leagues/baseball/mlb' # Fairly certain, url is hardset
     req = requests.get(url)
     soup = BeautifulSoup(req.content, "html.parser")
     # print(soup.title)
 
-    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline'])
+    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline', 'Event ID'])
 
     teams = soup.find_all(class_='event-cell__name-text')
     blocks = soup.find_all(class_='sportsbook-table__column-row')
 
-    for i in range(0, len(blocks), 4):
-        team = clean_up_team_name(teams[i // 4].text)
-        spread = blocks[i + 1].text
-        total = blocks[i + 2].text
-        moneyline = blocks[i + 3].text
+    for i in range(0, len(blocks), 8):
+        team_one = clean_up_team_name(blocks[i].find(class_='event-cell__name-text').text)
+        spread_one = blocks[i + 1].text
+        total_one = blocks[i + 2].text
+        moneyline_one = blocks[i + 3].text
+        
+        team_two = clean_up_team_name(blocks[i + 4].find(class_='event-cell__name-text').text)
+        spread_two = blocks[i + 5].text
+        total_two = blocks[i + 6].text
+        moneyline_two = blocks[i + 7].text
 
-        # print(team, run_line, total, moneyline)
-        # Add New Row to Dataframe
-        df_mlb.loc[len(df_mlb)] = [team, spread, total, moneyline]
-    
+        event = (team_one, team_two)
+        event_id = add_event(event, event_ids, events_df)
+
+        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one, event_id]
+        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two, event_id]
+
     return df_mlb
 
 
-def scrape_mlb_caesars():
+def scrape_mlb_caesars(event_ids, events_df):
     '''
     CURRENTLY BLOCKS CONTENT ON DEFAULT SELENIUM (MAY NEED LOGIN/COOKIES/ETC)
     When scraping, requires the window focus to be on the WebDriver tab (can probably game later)
     '''
-    # options = webdriver.ChromeOptions()
-    # options.page_load_strategy = 'normal' # Used by default, waits for all resources to download
-    # options.page_load_strategy = 'eager' # DOM access is ready, but other resources like images may still be loading
-    # options.page_load_strategy = 'none' # Does not block WebDriver at all    
-    # ua = UserAgent()
-    # options = webdriver.ChromeOptions()
-    # options.add_argument(f'user-agent={ua.random}')
-    # driver = webdriver.Chrome(options=options)
 
     driver = uc.Chrome()
     url = 'https://sportsbook.caesars.com/us/md/bet/baseball?id=04f90892-3afa-4e84-acce-5b89f151063d'
@@ -90,7 +110,7 @@ def scrape_mlb_caesars():
     html = driver.page_source
     soup = BeautifulSoup(html, "html.parser")
 
-    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline'])
+    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline', 'Event ID'])
 
     # blocks = soup.find_all(class_='eventContainer')
     blocks = soup.select('.eventContainer:not(.eventHasTournament)')
@@ -108,13 +128,17 @@ def scrape_mlb_caesars():
         total_one = chunks[4].text
         total_two = chunks[5].text
         
-        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one]
-        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two]
+        event = (team_one, team_two)
+        event_id = add_event(event, event_ids, events_df)
+
+        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one, event_id]
+        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two, event_id]
 
     driver.quit()
     return df_mlb
 
-def scrape_mlb_bet_mgm():
+
+def scrape_mlb_bet_mgm(event_ids, events_df):
     # URL might be subject to change depending on location and other factors
     url = 'https://sports.md.betmgm.com/en/sports/baseball-23/betting/usa-9/mlb-75'
 
@@ -133,7 +157,7 @@ def scrape_mlb_bet_mgm():
     html = driver.page_source
     soup = BeautifulSoup(html, "html.parser")
     
-    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline'])
+    df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline', 'Event ID'])
     
     blocks = soup.find_all('ms-six-pack-event')
 
@@ -150,17 +174,26 @@ def scrape_mlb_bet_mgm():
         moneyline_one = chunks[4].text
         moneyline_two = chunks[5].text
 
-        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one]
-        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two]    
+        event = (team_one, team_two)
+        event_id = add_event(event, event_ids, events_df)
+
+        df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one, event_id]
+        df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two, event_id] 
 
     driver.quit()
     return df_mlb
 
 
 def main():
-    scrape_mlb_draft_kings().to_csv('data/draft_kings_mlb_snapshot.csv')
-    scrape_mlb_caesars().to_csv('data/caesars_mlb_snapshot.csv')
-    scrape_mlb_bet_mgm().to_csv('data/bet_mgm_mlb_snapshot.csv')
+    event_ids = {}
+    events_df = pd.DataFrame(columns=['Event ID', 'Team One', 'Team Two'])
+
+    scrape_mlb_draft_kings(event_ids, events_df).to_csv('data/draft_kings_mlb.csv', index=False)
+    scrape_mlb_caesars(event_ids, events_df).to_csv('data/caesars_mlb.csv', index=False)
+    scrape_mlb_bet_mgm(event_ids, events_df).to_csv('data/bet_mgm_mlb.csv', index=False)
+    events_df.to_csv('data/events_mlb.csv', index=False)
+    # print(events_df)
+
 
 if __name__ == '__main__':
     main()
