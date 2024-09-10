@@ -41,6 +41,7 @@ def clean_up_team_name(team_name):
     else:
         return team_name
     
+    
 def add_event(curr_event, event_ids, events_df):
     '''
     Takes in a tuple of two teams (in any order). If the event was not already processed, then
@@ -62,107 +63,56 @@ def add_event(curr_event, event_ids, events_df):
     return new_event_id
 
 
-def scrape_mlb_draft_kings(event_ids = None, events_df = None):
+def scrape_mlb_draft_kings(event_ids=None, events_df=None):
     driver = uc.Chrome()
-    url = 'https://sportsbook.draftkings.com/leagues/baseball/mlb' # Fairly certain, url is hardset
+    url = 'https://sportsbook.draftkings.com/leagues/baseball/mlb'
     driver.get(url)
-    # time.sleep(10)
-    print('SCRAPED DRAFT KINGS')
+    
+    try:
+        print('SCRAPED DRAFT KINGS')
+        while True:  # Infinite loop to keep it running
+            time.sleep(1)  # Keeps the program alive until you manually close it
+
+    except KeyboardInterrupt:
+        print("DraftKings scraping interrupted. Closing browser...")
+    finally:
+        driver.quit()  # Ensures the browser closes when the loop is stopped
 
 
-def scrape_mlb_caesars(event_ids = None, events_df = None):
-    '''
-    CURRENTLY BLOCKS CONTENT ON DEFAULT SELENIUM (MAY NEED LOGIN/COOKIES/ETC)
-    When scraping, requires the window focus to be on the WebDriver tab (can probably game later)
-    '''
+def scrape_mlb_caesars(event_ids=None, events_df=None):
     driver = uc.Chrome()
     url = 'https://sportsbook.caesars.com/us/md/bet/baseball?id=04f90892-3afa-4e84-acce-5b89f151063d'
     driver.get(url)
-    # time.sleep(10)
-    print('SCRAPED CAESARS')
-
-
-    # # Scroll Down (NECESSARY - website progressively loads the DOM)
-    # for i in range(25):  # Adjust the range for more or fewer scrolls
-    #     driver.execute_script("window.scrollBy(0, 150);")  # Scroll down by 500 pixels
-    #     time.sleep(0.1)  # Wait a bit before scrolling again
     
-    # html = driver.page_source
-    # soup = BeautifulSoup(html, "html.parser")
+    try:
+        print('SCRAPED CAESARS')
+        while True:
+            time.sleep(1)  # Keeps the browser session alive
 
-    # df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline', 'Event ID'])
-
-    # # blocks = soup.find_all(class_='eventContainer')
-    # blocks = soup.select('.eventContainer:not(.eventHasTournament)')
-
-    # for block in blocks:
-    #     teams = block.find_all(class_='truncate2Rows')
-    #     team_one = clean_up_team_name(teams[0].text)
-    #     team_two = clean_up_team_name(teams[1].text)
-
-    #     chunks = block.find_all(class_='selectionContainer')
-    #     spread_one = chunks[0].text
-    #     spread_two = chunks[1].text
-    #     moneyline_one = chunks[2].text
-    #     moneyline_two = chunks[3].text
-    #     total_one = chunks[4].text
-    #     total_two = chunks[5].text
-        
-    #     event = (team_one, team_two)
-    #     event_id = add_event(event, event_ids, events_df)
-
-    #     df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one, event_id]
-    #     df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two, event_id]
-
-    # driver.quit()
-    # return df_mlb
+    except KeyboardInterrupt:
+        print("Caesars scraping interrupted. Closing browser...")
+    finally:
+        driver.quit()
 
 
-def scrape_mlb_bet_mgm(event_ids = None, events_df = None):
-    # URL might be subject to change depending on location and other factors
+def scrape_mlb_bet_mgm(event_ids=None, events_df=None):
     url = 'https://sports.md.betmgm.com/en/sports/baseball-23/betting/usa-9/mlb-75'
-
     options = webdriver.ChromeOptions()
-    options.page_load_strategy = 'normal' # Used by default, waits for all resources to download
-    # options.page_load_strategy = 'eager' # DOM access is ready, but other resources like images may still be loading
-    # options.page_load_strategy = 'none' # Does not block WebDriver at all    
     ua = UserAgent()
-    options = webdriver.ChromeOptions()
     options.add_argument(f'user-agent={ua.random}')
     driver = webdriver.Chrome(options=options)
 
     driver.get(url)
-    # time.sleep(10)
-    print('SCRAPED BET MGM')
 
-    # html = driver.page_source
-    # soup = BeautifulSoup(html, "html.parser")
-    
-    # df_mlb = pd.DataFrame(columns=['Team', 'Spread', 'Total', 'Moneyline', 'Event ID'])
-    
-    # blocks = soup.find_all('ms-six-pack-event')
+    try:
+        print('SCRAPED BET MGM')
+        while True:
+            time.sleep(1)  # Keeps the browser session alive
 
-    # for block in blocks:
-    #     teams = block.find_all(class_='participant')
-    #     team_one = teams[0].text.strip()
-    #     team_two = teams[1].text.strip()
-
-    #     chunks = block.find_all('ms-option')
-    #     spread_one = chunks[0].text
-    #     spread_two = chunks[1].text
-    #     total_one = chunks[2].text
-    #     total_two = chunks[3].text
-    #     moneyline_one = chunks[4].text
-    #     moneyline_two = chunks[5].text
-
-    #     event = (team_one, team_two)
-    #     event_id = add_event(event, event_ids, events_df)
-
-    #     df_mlb.loc[len(df_mlb)] = [team_one, spread_one, total_one, moneyline_one, event_id]
-    #     df_mlb.loc[len(df_mlb)] = [team_two, spread_two, total_two, moneyline_two, event_id] 
-
-    # driver.quit()
-    # return df_mlb
+    except KeyboardInterrupt:
+        print("Bet MGM scraping interrupted. Closing browser...")
+    finally:
+        driver.quit()
 
 
 # Function to set up multiprocessing for DraftKings
@@ -183,6 +133,18 @@ def open_bet_mgm():
 
 # Get live odds from DraftKings
 if __name__ == "__main__":
-    open_draft_kings()
-    open_caesars()
-    open_bet_mgm()
+    try:
+        open_draft_kings()
+        open_caesars()
+        open_bet_mgm()
+        
+        # Keep the main program running until manually stopped
+        while True:
+            time.sleep(1)  # Keeps the program alive, allowing subprocesses to run
+        
+    except KeyboardInterrupt:
+        print("Program interrupted. Exiting...")
+
+    finally:
+        # If needed, you can add any cleanup logic here
+        print("Shutting down.")
