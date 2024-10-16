@@ -41,7 +41,7 @@ def clean_up_team_name(team_name):
     else:
         return team_name
     
-    
+
 def add_event(curr_event, event_ids, events_df):
     '''
     Takes in a tuple of two teams (in any order). If the event was not already processed, then
@@ -118,7 +118,7 @@ def scrape_mlb_bet_mgm(event_ids=None, events_df=None):
 # Function to set up multiprocessing for DraftKings
 def open_draft_kings():
     process = mp.Process(target=scrape_mlb_draft_kings)
-    process.start()
+    process.start() 
     # process.join()
 
 def open_caesars():
